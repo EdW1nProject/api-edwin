@@ -26,40 +26,63 @@ router.get('/', async (req, res) => {
             }
         );
 
-        const data = response.data;
+        let data = response.data;
 
-        // Cek apakah data response berupa object dan memiliki links
-        if (!data || typeof data !== 'object' || !data.links) {
-            return res.status(500).json({
-                status: 500,
-                creator: 'Edwin',
-                error: 'Respons tidak valid dari server downloader.'
-            });
-        }
+        // Cek apakah respon berupa objek (JSON)
+        if (typeof data === 'object' && data.links) {
+            const links = data.links;
+            const downloadLink = links["Download High Quality"] || links["Download Low Quality"];
 
-        const links = data.links;
-        const downloadLink = links["Download High Quality"] || links["Download Low Quality"];
+            if (!downloadLink) {
+                return res.status(404).json({
+                    status: 404,
+                    creator: "Edwin",
+                    error: "Link video tidak ditemukan."
+                });
+            }
 
-        if (!downloadLink) {
-            return res.status(404).json({
-                status: 404,
+            return res.json({
+                status: 200,
                 creator: "Edwin",
-                error: "Link video tidak ditemukan. Coba gunakan link lain."
+                source: url,
+                type: 'video',
+                quality: links["Download High Quality"] ? 'high' : 'low',
+                download_link: downloadLink
             });
         }
 
-        res.json({
-            status: 200,
-            creator: "Edwin",
-            source: url,
-            type: 'video',
-            quality: links["Download High Quality"] ? 'high' : 'low',
-            download_link: downloadLink
+        // Jika bukan JSON, berarti HTML — lakukan scraping
+        if (typeof data === 'string') {
+            const match = data.match(/href="(https:\/\/[^"]+\.fbcdn\.net\/[^"]+)"/);
+
+            if (!match || !match[1]) {
+                return res.status(500).json({
+                    status: 500,
+                    creator: 'Edwin',
+                    error: 'Gagal parsing HTML respons. Link video tidak ditemukan.'
+                });
+            }
+
+            return res.json({
+                status: 200,
+                creator: "Edwin",
+                source: url,
+                type: 'video',
+                quality: 'unknown',
+                download_link: match[1]
+            });
+        }
+
+        // Jika tidak dikenali
+        return res.status(500).json({
+            status: 500,
+            creator: 'Edwin',
+            error: 'Respons tidak dikenali dari server downloader.'
         });
 
     } catch (err) {
         console.error("Error:", err.message);
-        res.status(500).json({
+        return res.status(500).json({
             status: 500,
             creator: 'Edwin',
             error: 'Terjadi kesalahan saat menghubungi API pihak ketiga.'
