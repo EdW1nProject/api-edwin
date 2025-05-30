@@ -1,6 +1,5 @@
 const express = require('express');
 const axios = require('axios');
-const cheerio = require('cheerio');
 const router = express.Router();
 
 router.get('/', async (req, res) => {
@@ -15,35 +14,26 @@ router.get('/', async (req, res) => {
     }
 
     try {
-        const { data: html } = await axios.get(url, {
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
-                'Accept-Language': 'en-US,en;q=0.9'
-            }
-        });
+        const { data } = await axios.post(
+            'https://facebook-video-downloader.fly.dev/app/main.php',
+            new URLSearchParams({ url }).toString(),
+            { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
+        );
 
-        const $ = cheerio.load(html);
-        const regex = /"playable_url":"(https:\\/\\/video[^"]+)"/;
-        const match = html.match(regex);
-
-        if (!match || !match[1]) {
+        if (!data.links || !data.links["Download High Quality"]) {
             return res.status(500).json({
                 status: 500,
-                creator: 'Edwin',
-                error: 'Gagal mendapatkan link video.'
+                creator: "Edwin",
+                error: "Gagal mendapatkan link video."
             });
         }
 
-        // Unescape string URL
-        const videoUrl = match[1].replace(/\\u0025/g, '%').replace(/\\/g, '');
-
         res.json({
             status: 200,
-            creator: 'Edwin',
+            creator: "Edwin",
             source: url,
-            download_link: decodeURIComponent(videoUrl)
+            download_link: data.links["Download High Quality"]
         });
-
     } catch (err) {
         console.error("Error:", err.message);
         res.status(500).json({
