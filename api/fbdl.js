@@ -2,42 +2,38 @@ const express = require('express');
 const axios = require('axios');
 const router = express.Router();
 
-router.get('/', async (req, res) => {
+router.get('/fbdown', async (req, res) => {
     const url = req.query.url;
-
     if (!url) {
         return res.status(400).json({
-            status: 400,
+            status: false,
             creator: 'Edwin',
-            error: 'Masukkan URL Facebook!'
+            message: 'Masukkan url parameters !'
         });
     }
 
     try {
-        const { data } = await axios.get(`https://vapis.my.id/api/fbdl?url=${encodeURIComponent(url)}`);
+        const response = await axios.get(`https://facebook-video-downloader.fly.dev/app/main.php?url=${encodeURIComponent(url)}`);
+        
+        // Asumsikan response-nya berbentuk JSON
+        const data = response.data;
 
-        if (!data || !data.status || !data.data || (!data.data.hd_url && !data.data.sd_url)) {
+        // Cek apakah respon valid
+        if (!data || !data.status) {
             return res.status(500).json({
-                status: 500,
-                creator: "Edwin",
-                error: "Gagal mendapatkan link video."
+                status: false,
+                creator: 'Edwin',
+                message: 'Gagal mengambil data dari server eksternal.'
             });
         }
 
-        res.json({
-            status: 200,
-            creator: "Edwin",
-            source: url,
-            title: data.data.title,
-            hd_download: data.data.hd_url || null,
-            sd_download: data.data.sd_url || null
-        });
+        res.json(data);
     } catch (err) {
-        console.error("Error:", err.message);
         res.status(500).json({
-            status: 500,
+            status: false,
             creator: 'Edwin',
-            error: 'Terjadi kesalahan, coba lagi nanti!'
+            message: 'Terjadi kesalahan saat memproses permintaan.',
+            error: err.message
         });
     }
 });
