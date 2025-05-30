@@ -16,7 +16,7 @@ router.get('/', async (req, res) => {
     try {
         const { data } = await axios.get(`https://vapis.my.id/api/fbdl?url=${encodeURIComponent(url)}`);
 
-        if (!data || !data.result || !data.result.url) {
+        if (!data || !data.status || !data.data || (!data.data.hd_url && !data.data.sd_url)) {
             return res.status(500).json({
                 status: 500,
                 creator: "Edwin",
@@ -28,7 +28,9 @@ router.get('/', async (req, res) => {
             status: 200,
             creator: "Edwin",
             source: url,
-            download_link: data.result.url
+            title: data.data.title,
+            hd_download: data.data.hd_url || null,
+            sd_download: data.data.sd_url || null
         });
     } catch (err) {
         console.error("Error:", err.message);
