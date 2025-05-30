@@ -1,91 +1,55 @@
 const express = require('express');
 const axios = require('axios');
+const cheerio = require('cheerio');
 const router = express.Router();
 
 router.get('/', async (req, res) => {
     const url = req.query.url;
 
-    if (!url || !url.includes('facebook.com')) {
+    if (!url) {
         return res.status(400).json({
             status: 400,
             creator: 'Edwin',
-            error: 'Masukkan URL Facebook yang valid!'
+            error: 'Masukkan URL Facebook!'
         });
     }
 
     try {
-        const payload = new URLSearchParams({ url });
-
-        const response = await axios.post(
-            'https://facebook-video-downloader.fly.dev/app/main.php',
-            payload,
-            {
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded'
-                }
+        const { data: html } = await axios.get(url, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+                'Accept-Language': 'en-US,en;q=0.9'
             }
-        );
+        });
 
-        let data = response.data;
+        const $ = cheerio.load(html);
+        const regex = /"playable_url":"(https:\\/\\/video[^"]+)"/;
+        const match = html.match(regex);
 
-        // Cek apakah respon berupa objek (JSON)
-        if (typeof data === 'object' && data.links) {
-            const links = data.links;
-            const downloadLink = links["Download High Quality"] || links["Download Low Quality"];
-
-            if (!downloadLink) {
-                return res.status(404).json({
-                    status: 404,
-                    creator: "Edwin",
-                    error: "Link video tidak ditemukan."
-                });
-            }
-
-            return res.json({
-                status: 200,
-                creator: "Edwin",
-                source: url,
-                type: 'video',
-                quality: links["Download High Quality"] ? 'high' : 'low',
-                download_link: downloadLink
+        if (!match || !match[1]) {
+            return res.status(500).json({
+                status: 500,
+                creator: 'Edwin',
+                error: 'Gagal mendapatkan link video.'
             });
         }
 
-        // Jika bukan JSON, berarti HTML — lakukan scraping
-        if (typeof data === 'string') {
-            const match = data.match(/href="(https:\/\/[^"]+\.fbcdn\.net\/[^"]+)"/);
+        // Unescape string URL
+        const videoUrl = match[1].replace(/\\u0025/g, '%').replace(/\\/g, '');
 
-            if (!match || !match[1]) {
-                return res.status(500).json({
-                    status: 500,
-                    creator: 'Edwin',
-                    error: 'Gagal parsing HTML respons. Link video tidak ditemukan.'
-                });
-            }
-
-            return res.json({
-                status: 200,
-                creator: "Edwin",
-                source: url,
-                type: 'video',
-                quality: 'unknown',
-                download_link: match[1]
-            });
-        }
-
-        // Jika tidak dikenali
-        return res.status(500).json({
-            status: 500,
+        res.json({
+            status: 200,
             creator: 'Edwin',
-            error: 'Respons tidak dikenali dari server downloader.'
+            source: url,
+            download_link: decodeURIComponent(videoUrl)
         });
 
     } catch (err) {
         console.error("Error:", err.message);
-        return res.status(500).json({
+        res.status(500).json({
             status: 500,
             creator: 'Edwin',
-            error: 'Terjadi kesalahan saat menghubungi API pihak ketiga.'
+            error: 'Terjadi kesalahan, coba lagi nanti!'
         });
     }
 });
