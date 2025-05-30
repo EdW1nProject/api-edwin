@@ -5,26 +5,46 @@ const router = express.Router();
 router.get('/', async (req, res) => {
     const url = req.query.url;
 
-    if (!url) {
+    if (!url || !url.includes('facebook.com')) {
         return res.status(400).json({
             status: 400,
             creator: 'Edwin',
-            error: 'Masukkan URL Facebook!'
+            error: 'Masukkan URL Facebook yang valid!'
         });
     }
 
     try {
-        const { data } = await axios.post(
+        const payload = new URLSearchParams({ url });
+
+        const response = await axios.post(
             'https://facebook-video-downloader.fly.dev/app/main.php',
-            new URLSearchParams({ url }).toString(),
-            { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
+            payload,
+            {
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                }
+            }
         );
 
-        if (!data.links || !data.links["Download High Quality"]) {
+        const data = response.data;
+
+        // Cek apakah data response berupa object dan memiliki links
+        if (!data || typeof data !== 'object' || !data.links) {
             return res.status(500).json({
                 status: 500,
+                creator: 'Edwin',
+                error: 'Respons tidak valid dari server downloader.'
+            });
+        }
+
+        const links = data.links;
+        const downloadLink = links["Download High Quality"] || links["Download Low Quality"];
+
+        if (!downloadLink) {
+            return res.status(404).json({
+                status: 404,
                 creator: "Edwin",
-                error: "Gagal mendapatkan link video."
+                error: "Link video tidak ditemukan. Coba gunakan link lain."
             });
         }
 
@@ -32,14 +52,17 @@ router.get('/', async (req, res) => {
             status: 200,
             creator: "Edwin",
             source: url,
-            download_link: data.links["Download High Quality"]
+            type: 'video',
+            quality: links["Download High Quality"] ? 'high' : 'low',
+            download_link: downloadLink
         });
+
     } catch (err) {
         console.error("Error:", err.message);
         res.status(500).json({
             status: 500,
             creator: 'Edwin',
-            error: 'Terjadi kesalahan, coba lagi nanti!'
+            error: 'Terjadi kesalahan saat menghubungi API pihak ketiga.'
         });
     }
 });
