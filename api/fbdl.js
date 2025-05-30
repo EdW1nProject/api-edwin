@@ -14,13 +14,9 @@ router.get('/', async (req, res) => {
     }
 
     try {
-        const { data } = await axios.post(
-            'https://facebook-video-downloader.fly.dev/app/main.php',
-            new URLSearchParams({ url }).toString(),
-            { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
-        );
+        const { data } = await axios.get(`https://vapis.my.id/api/fbdl?url=${encodeURIComponent(url)}`);
 
-        if (!data.links || !data.links["Download High Quality"]) {
+        if (!data || !data.result || !data.result.url) {
             return res.status(500).json({
                 status: 500,
                 creator: "Edwin",
@@ -32,7 +28,7 @@ router.get('/', async (req, res) => {
             status: 200,
             creator: "Edwin",
             source: url,
-            download_link: data.links["Download High Quality"]
+            download_link: data.result.url
         });
     } catch (err) {
         console.error("Error:", err.message);
