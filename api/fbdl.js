@@ -2,36 +2,45 @@ const express = require('express');
 const axios = require('axios');
 const router = express.Router();
 
-router.get('/api/fbdl', async (req, res) => {
+router.get('/', async (req, res) => {
     const url = req.query.url;
+
     if (!url) {
         return res.status(400).json({
-            status: false,
+            status: 400,
             creator: 'Edwin',
-            message: 'Masukkan url parameters !'
+            error: 'Masukkan URL Facebook!'
         });
     }
 
     try {
-        const response = await axios.get(`https://facebook-video-downloader.fly.dev/app/main.php?url=${encodeURIComponent(url)}`);
-        
-        const data = response.data;
+        const { data } = await axios.get(`https://apidl.asepharyana.cloud/api/downloader/fbdl?url=${encodeURIComponent(url)}`);
 
-        if (!data || typeof data !== 'object') {
+        if (!data.status || !data.data || data.data.length === 0) {
             return res.status(500).json({
-                status: false,
-                creator: 'Edwin',
-                message: 'Gagal mengambil data dari server eksternal.'
+                status: 500,
+                creator: "Edwin",
+                error: "Gagal mendapatkan data video."
             });
         }
 
-        res.json(data);
+        // Ambil video resolusi tertinggi (jika perlu, kamu bisa ubah strategi pemilihan)
+        const videoData = data.data[0];
+
+        res.json({
+            status: 200,
+            creator: "Edwin",
+            source: url,
+            resolution: videoData.resolution,
+            thumbnail: videoData.thumbnail,
+            download_link: videoData.url
+        });
     } catch (err) {
+        console.error("Error:", err.message);
         res.status(500).json({
-            status: false,
+            status: 500,
             creator: 'Edwin',
-            message: 'Terjadi kesalahan saat memproses permintaan.',
-            error: err.message
+            error: 'Terjadi kesalahan, coba lagi nanti!'
         });
     }
 });
